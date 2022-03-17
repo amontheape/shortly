@@ -5,12 +5,12 @@ export async function shorten(req, res) {
   const { url } = req.body;
   const shortUrl = uuid().split('-')[0];
   const { user } = res.locals;
-  console.log(user);
+
   try {
     await connection.query(`
-      INSERT INTO urls ("shortUrl", url, "userId")
-      values($1, $2, $3)
-    `, [shortUrl, url, user.id]);
+      INSERT INTO urls ("shortUrl", url, "visitCount", "userId")
+      values($1, $2, $3, $4)
+    `, [shortUrl, url, 0, user.id]);
 
     return res.status(201).send(shortUrl);
   } catch (error) {
@@ -20,5 +20,29 @@ export async function shorten(req, res) {
 }
 
 export async function getShort(req, res) {
+  const { shortUrl: param } = req.params;
 
+  try {
+    const { rows: [shortened] } = await connection.query(`
+      SELECT id, "shortUrl", url, "visitCount"
+      FROM urls WHERE urls."shortUrl"=$1
+    `, [param]);
+
+    if(!shortened) {
+      return res.sendStatus(404);
+    }
+
+    const { id, shortUrl, url, visitCount } = shortened;
+    
+    await connection.query(`
+      UPDATE urls
+        SET "visitCount"=$1
+        WHERE id=$2
+    `, [visitCount + 1, id]);
+
+    return res.status(200).send({id, shortUrl, url});
+  } catch (error) {
+    console.log(error);
+    return res.sendStatus(500);
+  }
 }
