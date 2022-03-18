@@ -46,3 +46,23 @@ export async function getShort(req, res) {
     return res.sendStatus(500);
   }
 }
+
+export async function deleteEntry(req, res) {
+  const { id: param } = req.params;
+  const { user } = res.locals;
+
+  try {
+    const { rows: [urls] } = await connection.query(`SELECT * FROM urls WHERE urls.id=$1`, [param]);
+
+    if ( urls?.userId !== user.id || !urls ) {
+      return res.sendStatus(401);
+    }
+
+    await connection.query(`DELETE FROM urls WHERE urls.id=$1`, [param]);
+    return res.sendStatus(204);
+
+  } catch (error) {
+    console.log(error);
+    return res.sendStatus(500);
+  }
+}
